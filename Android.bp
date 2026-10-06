@@ -12,7 +12,6 @@ android_app {
     system_ext_specific: true,
 
     srcs: [
-        "src/**/*.java",
         "src/**/*.kt",
     ],
 
@@ -30,4 +29,3 @@ aidl_interface {
         "aidl/com/nothing/thirdparty/IGlyphService.aidl",
     ],
 }
-

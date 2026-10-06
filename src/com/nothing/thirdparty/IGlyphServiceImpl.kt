@@ -14,16 +14,19 @@ import android.util.Log
 
 class IGlyphServiceImpl(private val context: Context) : IGlyphService.Stub() {
     private var glyphService: IGlyphService? = null
+    private var frameLength = 0
+    private val frameLock = Any()
 
-    private val connection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            glyphService = IGlyphService.Stub.asInterface(service)
-        }
+    private val connection =
+        object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                glyphService = IGlyphService.Stub.asInterface(service)
+            }
 
-        override fun onServiceDisconnected(name: ComponentName?) {
-            glyphService = null
+            override fun onServiceDisconnected(name: ComponentName?) {
+                glyphService = null
+            }
         }
-    }
 
     init {
         bindglyphService()
@@ -31,9 +34,11 @@ class IGlyphServiceImpl(private val context: Context) : IGlyphService.Stub() {
 
     private fun bindglyphService() {
         if (context != null) {
-            val intent = Intent("com.nothing.thirdparty.IGlyphService").apply {
-                component = ComponentName("co.aospa.glyph", "co.aospa.glyph.Services.ThirdPartyService")
-            }
+            val intent =
+                Intent("com.nothing.thirdparty.IGlyphService").apply {
+                    component =
+                        ComponentName("co.aospa.glyph", "co.aospa.glyph.services.ThirdPartyService")
+                }
             context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         } else {
             Log.e("IGlyphServiceImpl", "Context is null, cannot bind service")
@@ -42,22 +47,48 @@ class IGlyphServiceImpl(private val context: Context) : IGlyphService.Stub() {
 
     override fun setFrameColors(iArray: IntArray?) {
         Log.i("IGlyphServiceImpl", "updateLedFrame - ${iArray.contentToString()}")
-        if (iArray != null) {
-            glyphService?.setFrameColors(iArray)
+        synchronized(frameLock) {
+            if (iArray != null) {
+                glyphService?.let {
+                    it.setFrameColors(iArray)
+                    frameLength = iArray.size
+                }
+            }
         }
     }
 
     override fun openSession() {
         Log.i("IGlyphServiceImpl", "openSession")
-        glyphService?.setFrameColors(intArrayOf(0, 0, 0, 0, 0))
     }
 
     override fun closeSession() {
         Log.i("IGlyphServiceImpl", "closeSession")
-        glyphService?.setFrameColors(intArrayOf(0, 0, 0, 0, 0))
+        synchronized(frameLock) {
+            if (frameLength > 0) {
+                glyphService?.setFrameColors(IntArray(frameLength))
+            }
+        }
     }
 
-
     override fun register(str: String) = true
+
     override fun registerSDK(str1: String, str2: String) = true
+
+    override fun registerMatrixSDK(str: String) = glyphService?.registerMatrixSDK(str) ?: false
+
+    override fun setMatrixColors(iArray: IntArray?) {
+        glyphService?.setMatrixColors(iArray)
+    }
+
+    override fun setGlyphMatrixTimeout(active: Boolean) {
+        glyphService?.setGlyphMatrixTimeout(active)
+    }
+
+    override fun setAppMatrixColors(iArray: IntArray?) {
+        glyphService?.setAppMatrixColors(iArray)
+    }
+
+    override fun closeAppMatrix() {
+        glyphService?.closeAppMatrix()
+    }
 }
